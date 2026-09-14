@@ -6,106 +6,205 @@ import {
     collection,
     getDocs,
     addDoc,
-    deleteDoc,
     doc,
+    getDoc,
     serverTimestamp,
     query,
-    orderBy,
-    limit
+    limit,
+    onSnapshot,  
+    where,            
+    updateDoc,
+    setDoc,
+    arrayUnion,
+    
 } from "firebase/firestore";
 import { signOut, User } from "firebase/auth";
-import {
-    Users,
-    Activity,
-    LogOut,
-    Plus,
-    RefreshCw,
-    Trash2,
-    CheckCircle2,
-    AlertTriangle,
-    Terminal,
-    Radio
-} from "lucide-react";
+import { Activity, AlertTriangle, Bike, HeartPulse, KeyRound, LogOut, Phone, Plus, Radio, Save, UserPlus, UserRound } from "lucide-react";
 
-interface Pilot {
+
+interface Squad {
     id: string;
-    callsign?: string;
-    role?: string;
-    status?: string;
-    createdAt?: unknown;
+    squadId: string;
+    status: string;
+    createdBy: string;
+    members?: string[];
 }
 
 export default function Dashboard({ user }: { user: User }) {
-    const [pilots, setPilots] = useState<Pilot[]>([]);
-    const [loading, setLoading] = useState(true);
+    const [activeSquads, setActiveSquads] = useState<Squad[]>([]);
+    const [joinCode, setJoinCode] = useState("");
     const [actionLoading, setActionLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
-
-    const fetchPilots = async () => {
-        setLoading(true);
-        setError(null);
-        try {
-            const usersRef = collection(db, "users");
-            const q = query(usersRef, limit(25));
-            const snapshot = await getDocs(q);
-
-            const fetched: Pilot[] = [];
-            snapshot.forEach((docSnap) => {
-                fetched.push({
-                    id: docSnap.id,
-                    ...docSnap.data(),
-                });
-            });
-            setPilots(fetched);
-        } catch (err: unknown) {
-            console.error("Firestore error:", err);
-            const fireErr = err as { message?: string };
-            setError(fireErr.message || "Error al consultar Firestore");
-        } finally {
-            setLoading(false);
-        }
-    };
+    const [profile, setProfile] = useState({
+        displayName: "",
+        emergencyPhone: "",
+        bloodType: "",
+        bikeModel: "",
+    });
+    const [profileSaving, setProfileSaving] = useState(false);
 
     useEffect(() => {
-        fetchPilots();
-    }, []);
+        if (!navigator.geolocation) {
+            console.warn("La geolocalización no está soportada por este navegador.");
+            return;
+        }
 
-    const handleCreatePilot = async () => {
+        const watchId = navigator.geolocation.watchPosition(
+            async (position) => {
+                const { latitude, longitude } = position.coords;
+                const userIdentifier = user.email || user.uid;
+
+                try {
+                    await addDoc(collection(db, "telemetry"), {
+                        pilot: userIdentifier,
+                        latitude: latitude,
+                        longitude: longitude,
+                        updatedAt: serverTimestamp(),
+                    });
+                } catch (err) {
+                    console.error("Error al enviar telemetría:", err);
+                }
+            },
+            (err) => console.error("Error de GPS:", err.message),
+            { enableHighAccuracy: true }
+        );
+
+        return () => navigator.geolocation.clearWatch(watchId);
+    }, [user]);
+
+    const handleStartRide = async (squadDocId: string) => {
         setActionLoading(true);
         try {
-            const callsigns = ["Viper", "Ghost", "Falcon", "Nova", "Spectre", "Shadow", "Maverick"];
-            const roles = ["Capitán de Flota", "Especialista Táctico", "Navegante", "Operador de Drones"];
-            const randomCallsign = callsigns[Math.floor(Math.random() * callsigns.length)] + "-" + Math.floor(100 + Math.random() * 900);
-            const randomRole = roles[Math.floor(Math.random() * roles.length)];
-
-            await addDoc(collection(db, "users"), {
-                callsign: randomCallsign,
-                role: randomRole,
-                status: "En Misión",
-                registeredBy: user.email || user.uid,
-                createdAt: serverTimestamp(),
+            await updateDoc(doc(db, "squads", squadDocId), {
+                status: "active"
             });
-
-            await fetchPilots();
+            alert("¡La rodada ha iniciado! Estado cambiado a ACTIVE.");
         } catch (err: unknown) {
-            console.error("Error creating pilot:", err);
             const fireErr = err as { message?: string };
-            setError("Error al escribir en Firestore: " + (fireErr.message || "Permisos denegados"));
+            setError("Error al iniciar la rodada: " + (fireErr.message || "Permiso denegado"));
         } finally {
             setActionLoading(false);
         }
     };
 
-    const handleDeletePilot = async (pilotId: string) => {
+    useEffect(() => {
+        const loadProfile = async () => {
+            try {
+                const profileSnapshot = await getDoc(doc(db, "users", user.uid));
+                if (profileSnapshot.exists()) {
+                    const data = profileSnapshot.data();
+                    setProfile({
+                        displayName: data.displayName || "",
+                        emergencyPhone: data.emergencyPhone || "",
+                        bloodType: data.bloodType || "",
+                        bikeModel: data.bikeModel || "",
+                    });
+                }
+            } catch (err) {
+                console.error("Error al cargar perfil:", err);
+            }
+        };
+
+        loadProfile();
+
+        const squadsQuery = query(collection(db, "squads"), limit(10));
+        const unsubSquads = onSnapshot(squadsQuery, (snapshot) => {
+            const fetchedSquads: Squad[] = [];
+            snapshot.forEach((docSnap) => {
+                fetchedSquads.push({ id: docSnap.id, ...docSnap.data() as Omit<Squad, "id"> });
+            });
+            setActiveSquads(fetchedSquads);
+        }, (err) => {
+            console.error("Error en tiempo realll", err);
+        });
+
+        return () => {
+            unsubSquads();
+        };
+    }, [user.uid]);
+
+    const handleSaveProfile = async (event: React.FormEvent<HTMLFormElement>) => {
+        event.preventDefault();
+        setProfileSaving(true);
+        setError(null);
+
         try {
-            await deleteDoc(doc(db, "users", pilotId));
-            setPilots((prev) => prev.filter((p) => p.id !== pilotId));
+            await setDoc(doc(db, "users", user.uid), {
+                ...profile,
+                email: user.email || "",
+                updatedAt: serverTimestamp(),
+            }, { merge: true });
+            alert("¡Perfil actualizado correctamente!");
         } catch (err: unknown) {
-            console.error("Error deleting pilot:", err);
             const fireErr = err as { message?: string };
-            setError("Error al eliminar documento: " + (fireErr.message || "Permiso denegado"));
+            setError("Error al guardar el perfil: " + (fireErr.message || "Permiso denegado"));
+        } finally {
+            setProfileSaving(false);
         }
     };
+
+    
+
+    //moficicacion 75 a la 93 
+
+    const handleCreateSquad = async () => {
+        setActionLoading(true);
+        try {
+            const squadId = Math.random().toString(36).substring(2, 8).toUpperCase();
+            await addDoc(collection(db, "squads"), {
+                squadId: squadId,
+                status: "waiting",
+                createdAt: serverTimestamp(),
+                createdBy: user.email || user.uid,
+            });
+            alert(`¡Nueva Rodada creada con éxito! Código: ${squadId}`);
+        } catch (err: unknown) {
+            console.error("Error al crear rodada:", err);
+            const fireErr = err as { message?: string };
+            setError("Error al crear la rodada: " + (fireErr.message || "Permiso denegado"));
+        } finally {
+            setActionLoading(false);
+        }
+    };
+
+//  Agregagar miembros para rodada organizadaa *
+
+const handleJoinSquad = async () => {
+    if (!joinCode.trim()) {
+        setError("Por favor ingresa un código de rodada válido.");
+        return;
+    }
+
+    setActionLoading(true);
+    setError(null);
+    try {
+        const cleanCode = joinCode.trim().toUpperCase();
+        const q = query(collection(db, "squads"), where("squadId", "==", cleanCode));
+        const querySnapshot = await getDocs(q);
+
+        if (querySnapshot.empty) {
+            setError("No se encontró ninguna rodada con ese código.");
+            setActionLoading(false);
+            return;
+        }
+
+        const squadDoc = querySnapshot.docs[0];
+        const userIdentifier = user.email || user.uid;
+
+        await updateDoc(doc(db, "squads", squadDoc.id), {
+            members: arrayUnion(userIdentifier)
+        });
+
+        alert(`¡Te has unido con éxito a la rodada [${cleanCode}]!`);
+        setJoinCode("");
+    } catch (err: unknown) {
+        const fireErr = err as { message?: string };
+        setError("Error al unirse a la rodada: " + (fireErr.message || "Permiso denegado"));
+    } finally {
+        setActionLoading(false);
+    }
+};
+
 
     const handleLogout = async () => {
         try {
@@ -117,7 +216,7 @@ export default function Dashboard({ user }: { user: User }) {
 
     return (
         <div className="w-full max-w-6xl mx-auto space-y-6">
-            {/* Top Navigation Bar */}
+            
             <header className="flex flex-wrap items-center justify-between gap-4 p-4 rounded-2xl bg-[#161B26]/90 border border-cyan-500/20 backdrop-blur-md shadow-xl">
                 <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-[#8A2BE2] to-[#00FFFF] p-[2px] shadow-[0_0_15px_rgba(0,255,255,0.3)]">
@@ -129,7 +228,9 @@ export default function Dashboard({ user }: { user: User }) {
                         <h1 className="text-lg font-bold text-white tracking-wider flex items-center gap-2">
                             CO-PILOTO <span className="text-[#00FFFF] text-xs font-mono px-2 py-0.5 rounded bg-cyan-950/60 border border-cyan-500/30">ONLINE</span>
                         </h1>
-                        <p className="text-xs text-gray-400 font-mono">Telemetría de escuadrones & Base de Datos</p>
+                        
+                       {/* se le acomodo descripcion en linea 341 */} 
+                        <p className="text-xs text-gray-400 font-mono">Telemetría de escuadrones & Monitoreo en ruta</p>
                     </div>
                 </div>
 
@@ -144,6 +245,7 @@ export default function Dashboard({ user }: { user: User }) {
                             Sesión Activa: Token Verificado
                         </p>
                     </div>
+
 
                     <button
                         onClick={handleLogout}
@@ -172,165 +274,165 @@ export default function Dashboard({ user }: { user: User }) {
                 </div>
             )}
 
-            {/* Telemetry Stats Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-                {/* Stat 1: Count */}
-                <div className="p-5 rounded-2xl bg-[#161B26] border border-gray-800 relative overflow-hidden group hover:border-[#00FFFF]/50 transition">
-                    <div className="absolute top-0 right-0 w-24 h-24 bg-cyan-500/10 rounded-full blur-2xl group-hover:bg-cyan-500/20 transition" />
-                    <div className="flex items-center justify-between mb-2">
-                        <span className="text-xs font-mono text-gray-400 uppercase tracking-wider">
-                            Pilotos en Firestore
-                        </span>
-                        <Users className="w-5 h-5 text-[#00FFFF]" />
+            {/* Perfil del piloto */}
+            <section className="p-6 rounded-2xl bg-[#161B26]/90 border border-gray-800 shadow-xl space-y-5">
+                <div>
+                    <h2 className="text-lg font-bold text-white flex items-center gap-2">
+                        <UserRound className="w-5 h-5 text-[#00FFFF]" />
+                        Perfil del Piloto
+                    </h2>
+                    <p className="text-xs text-gray-400 font-mono mt-1">
+                        Captura la información personal relevante asociada a tu cuenta.
+                    </p>
+                </div>
+
+                <form onSubmit={handleSaveProfile} className="border-t border-gray-800 pt-5 space-y-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <label className="space-y-1.5">
+                            <span className="text-xs text-gray-300 flex items-center gap-1.5">
+                                <UserRound className="w-3.5 h-3.5 text-[#00FFFF]" /> Nombre o Apodo
+                            </span>
+                            <input
+                                required
+                                value={profile.displayName}
+                                onChange={(event) => setProfile({ ...profile, displayName: event.target.value })}
+                                placeholder="Ej. Moises"
+                                className="w-full px-3 py-2.5 rounded-xl bg-[#0D111A] border border-gray-700 text-white text-sm focus:outline-none focus:border-[#00FFFF]"
+                            />
+                        </label>
+
+                        <label className="space-y-1.5">
+                            <span className="text-xs text-gray-300 flex items-center gap-1.5">
+                                <Phone className="w-3.5 h-3.5 text-red-400" /> Teléfono de Emergencia
+                            </span>
+                            <input
+                                required
+                                type="tel"
+                                value={profile.emergencyPhone}
+                                onChange={(event) => setProfile({ ...profile, emergencyPhone: event.target.value })}
+                                placeholder="Ej. 5568924193"
+                                className="w-full px-3 py-2.5 rounded-xl bg-[#0D111A] border border-gray-700 text-white text-sm focus:outline-none focus:border-[#00FFFF]"
+                            />
+                        </label>
+
+                        <label className="space-y-1.5">
+                            <span className="text-xs text-gray-300 flex items-center gap-1.5">
+                                <HeartPulse className="w-3.5 h-3.5 text-pink-500" /> Tipo de Sangre
+                            </span>
+                            <input
+                                required
+                                value={profile.bloodType}
+                                onChange={(event) => setProfile({ ...profile, bloodType: event.target.value })}
+                                placeholder="Ej. O+, A+, B-, AB+"
+                                className="w-full px-3 py-2.5 rounded-xl bg-[#0D111A] border border-gray-700 text-white text-sm focus:outline-none focus:border-[#00FFFF]"
+                            />
+                        </label>
+
+                        <label className="space-y-1.5">
+                            <span className="text-xs text-gray-300 flex items-center gap-1.5">
+                                <Bike className="w-3.5 h-3.5 text-purple-400" /> Modelo de Moto
+                            </span>
+                            <input
+                                required
+                                value={profile.bikeModel}
+                                onChange={(event) => setProfile({ ...profile, bikeModel: event.target.value })}
+                                placeholder="Ej. Italika 250Z"
+                                className="w-full px-3 py-2.5 rounded-xl bg-[#0D111A] border border-gray-700 text-white text-sm focus:outline-none focus:border-[#00FFFF]"
+                            />
+                        </label>
                     </div>
-                    <div className="text-3xl font-black text-white font-mono flex items-baseline gap-2">
-                        {loading ? (
-                            <span className="text-gray-500 animate-pulse text-xl">Cargando...</span>
+
+                    <button
+                        type="submit"
+                        disabled={profileSaving}
+                        className="w-full py-3 rounded-xl bg-gradient-to-r from-[#00FFFF] to-[#8A2BE2] text-[#0A0D14] font-bold text-xs uppercase tracking-wider shadow-[0_0_15px_rgba(0,255,255,0.25)] hover:shadow-[0_0_22px_rgba(0,255,255,0.4)] transition flex items-center justify-center gap-2 disabled:opacity-50"
+                    >
+                        {profileSaving ? (
+                            <div className="w-4 h-4 border-2 border-[#0A0D14] border-t-transparent rounded-full animate-spin" />
                         ) : (
-                            <>
-                                <span className="text-[#00FFFF]">{pilots.length}</span>
-                                <span className="text-xs text-gray-500 font-normal">registrados</span>
-                            </>
+                            <Save className="w-4 h-4" />
                         )}
-                    </div>
-                    <p className="text-[11px] text-gray-500 mt-2 font-mono">Colección /users leída con éxito</p>
+                        Guardar Información del Piloto
+                    </button>
+                </form>
+            </section>
+
+            {/* Panel de Gestión de Rodadas (Unirse o Crear) */}
+            <div className="p-5 rounded-2xl bg-[#161B26] border border-gray-800 grid grid-cols-1 md:grid-cols-2 gap-4 items-center">
+                <div className="flex items-center gap-3">
+                    <button
+                        onClick={handleCreateSquad}
+                        disabled={actionLoading}
+                        className="w-full md:w-auto px-5 py-3 rounded-xl bg-[#FFEA00] hover:bg-[#FF6000] text-[#121212] font-bold text-xs uppercase tracking-wider shadow-[0_0_15px_rgba(255,234,0,0.3)] transition flex items-center justify-center gap-2 disabled:opacity-50"
+                    >
+                        <Plus className="w-4 h-4" />
+                        <span>Crear Nueva Rodada</span>
+                    </button>
                 </div>
 
-                {/* Stat 2: Security & Rules */}
-                <div className="p-5 rounded-2xl bg-[#161B26] border border-gray-800 relative overflow-hidden group hover:border-[#8A2BE2]/50 transition">
-                    <div className="absolute top-0 right-0 w-24 h-24 bg-purple-500/10 rounded-full blur-2xl group-hover:bg-purple-500/20 transition" />
-                    <div className="flex items-center justify-between mb-2">
-                        <span className="text-xs font-mono text-gray-400 uppercase tracking-wider">
-                            Regla de Seguridad
-                        </span>
-                        <CheckCircle2 className="w-5 h-5 text-[#8A2BE2]" />
+                {/* Input para Unirse con Código */}
+                <div className="flex items-center gap-2">
+                    <div className="relative w-full">
+                        <KeyRound className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                        <input
+                            type="text"
+                            maxLength={6}
+                            placeholder="CÓDIGO (Ej: X8K2P9)"
+                            value={joinCode}
+                            onChange={(e) => setJoinCode(e.target.value.toUpperCase())}
+                            className="w-full pl-9 pr-3 py-2.5 rounded-xl bg-[#0D111A] border border-gray-700 text-white font-mono text-xs placeholder-gray-500 focus:outline-none focus:border-[#00FFFF] uppercase"
+                        />
                     </div>
-                    <div className="text-lg font-bold text-white font-mono flex items-center gap-2">
-                        <span className="text-[#8A2BE2]">request.auth != null</span>
-                    </div>
-                    <p className="text-[11px] text-gray-400 mt-2 font-mono">
-                        Estado: <span className="text-emerald-400 font-semibold">CUMPLIDA</span> (Permisos concedidos)
-                    </p>
-                </div>
-
-                {/* Stat 3: Telemetry Status */}
-                <div className="p-5 rounded-2xl bg-[#161B26] border border-gray-800 relative overflow-hidden group hover:border-emerald-500/50 transition">
-                    <div className="absolute top-0 right-0 w-24 h-24 bg-emerald-500/10 rounded-full blur-2xl group-hover:bg-emerald-500/20 transition" />
-                    <div className="flex items-center justify-between mb-2">
-                        <span className="text-xs font-mono text-gray-400 uppercase tracking-wider">
-                            Conexión Firestore
-                        </span>
-                        <Activity className="w-5 h-5 text-emerald-400" />
-                    </div>
-                    <div className="text-lg font-bold text-emerald-400 font-mono flex items-center gap-2">
-                        <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse" />
-                        ACTIVA & ENLACE OK
-                    </div>
-                    <p className="text-[11px] text-gray-500 mt-2 font-mono">
-                        UID: <span className="text-gray-300">{user.uid.slice(0, 12)}...</span>
-                    </p>
+                    <button
+                        onClick={handleJoinSquad}
+                        disabled={actionLoading || !joinCode}
+                        className="px-4 py-2.5 rounded-xl bg-[#00FFFF] hover:bg-cyan-400 text-[#0A0D14] font-bold text-xs uppercase tracking-wider transition flex items-center gap-1.5 disabled:opacity-40 shrink-0"
+                    >
+                        <UserPlus className="w-4 h-4" />
+                        <span>Unirme</span>
+                    </button>
                 </div>
             </div>
 
-            {/* Main Action Bar & Documents Panel */}
-            <div className="p-6 rounded-2xl bg-[#161B26]/90 border border-gray-800 shadow-xl space-y-5">
-                <div className="flex flex-wrap items-center justify-between gap-4">
-                    <div>
-                        <h2 className="text-lg font-bold text-white flex items-center gap-2">
-                            <Terminal className="w-5 h-5 text-[#00FFFF]" />
-                            Escuadrón de Pilotos en Base de Datos
-                        </h2>
-                        <p className="text-xs text-gray-400 font-mono">
-                            Prueba la lectura y escritura directa sobre la colección <code className="text-[#00FFFF]">users</code>
-                        </p>
-                    </div>
-
-                    <div className="flex items-center gap-2.5">
-                        <button
-                            onClick={fetchPilots}
-                            disabled={loading}
-                            title="Recargar datos"
-                            className="p-2.5 rounded-xl bg-[#0D111A] border border-gray-700 hover:border-[#00FFFF] text-gray-300 hover:text-white transition disabled:opacity-50"
-                        >
-                            <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin text-[#00FFFF]" : ""}`} />
-                        </button>
-
-                        <button
-                            onClick={handleCreatePilot}
-                            disabled={actionLoading}
-                            className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-[#00FFFF] to-[#8A2BE2] text-[#0A0D14] font-bold text-xs uppercase tracking-wider shadow-[0_0_15px_rgba(0,255,255,0.25)] hover:shadow-[0_0_22px_rgba(0,255,255,0.4)] active:scale-95 transition flex items-center gap-2 disabled:opacity-50"
-                        >
-                            {actionLoading ? (
-                                <div className="w-4 h-4 border-2 border-[#0A0D14] border-t-transparent rounded-full animate-spin" />
-                            ) : (
-                                <>
-                                    <Plus className="w-4 h-4" />
-                                    <span>Registrar Nuevo Piloto</span>
-                                </>
-                            )}
-                        </button>
+            {/* Rodadas Activas en Tiempo Real */}
+            {activeSquads.length > 0 && (
+                <div className="p-5 rounded-2xl bg-[#161B26] border border-cyan-500/30 space-y-3">
+                    <h3 className="text-xs font-mono uppercase tracking-wider text-[#00FFFF] flex items-center gap-2">
+                        <Activity className="w-4 h-4" />
+                        Rodadas Activas en Vivo ({activeSquads.length})
+                    </h3>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+                        {activeSquads.map((squad) => (
+                            <div key={squad.id} className="p-3.5 rounded-xl bg-[#0D111A] border border-gray-800 font-mono text-xs space-y-2">
+                                <div className="flex justify-between items-center">
+                                    <span className="text-white font-bold">CÓDIGO: <span className="text-[#FFEA00]">{squad.squadId}</span></span>
+                                    <span className="text-[10px] px-2 py-0.5 rounded bg-emerald-950 text-emerald-400 border border-emerald-500/30">
+                                        {squad.status}
+                                    </span>
+                                </div>
+                                <p className="text-[11px] text-gray-400 truncate">Por: {squad.createdBy}</p>
+                                <p className="text-[10px] text-cyan-300">
+                                  Integrantes: {squad.members?.length || 1} piloto(s)
+                                        </p>
+                                {squad.status === "waiting" && (
+                                    <button
+                                        onClick={() => handleStartRide(squad.id)}
+                                        disabled={actionLoading}
+                                        className="w-full mt-2 py-1.5 px-3 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-black font-bold text-[11px] uppercase tracking-wider transition disabled:opacity-50"
+                                    >
+                                        Iniciar Rodada
+                                    </button>
+                                )}
+                            </div>
+                        ))}
                     </div>
                 </div>
+            )}
 
-                {/* Pilots Table / List */}
-                {loading ? (
-                    <div className="py-16 text-center text-gray-400 font-mono space-y-3">
-                        <div className="w-8 h-8 border-2 border-[#00FFFF] border-t-transparent rounded-full animate-spin mx-auto" />
-                        <p className="text-xs">Sincronizando con Cloud Firestore...</p>
-                    </div>
-                ) : pilots.length === 0 ? (
-                    <div className="py-12 px-6 rounded-xl border border-dashed border-gray-800 text-center space-y-3">
-                        <Users className="w-10 h-10 text-gray-600 mx-auto" />
-                        <h3 className="text-sm font-semibold text-gray-300 font-mono">No hay pilotos en la colección &quot;users&quot;</h3>
-                        <p className="text-xs text-gray-500 max-w-sm mx-auto font-mono">
-                            Tu regla de seguridad te permite escribir. Haz clic en el botón superior para registrar el primer piloto de prueba.
-                        </p>
-                    </div>
-                ) : (
-                    <div className="overflow-x-auto">
-                        <table className="w-full text-left font-mono text-xs">
-                            <thead>
-                                <tr className="border-b border-gray-800 text-gray-400 uppercase tracking-wider">
-                                    <th className="pb-3 font-semibold">Identificador / Callsign</th>
-                                    <th className="pb-3 font-semibold">Rol</th>
-                                    <th className="pb-3 font-semibold">Estado</th>
-                                    <th className="pb-3 font-semibold">ID de Documento</th>
-                                    <th className="pb-3 font-semibold text-right">Acciones</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-gray-800/60">
-                                {pilots.map((pilot) => (
-                                    <tr key={pilot.id} className="hover:bg-cyan-500/5 transition">
-                                        <td className="py-3.5 font-bold text-[#00FFFF]">
-                                            {pilot.callsign || "Piloto Sin Nombre"}
-                                        </td>
-                                        <td className="py-3.5 text-gray-300">
-                                            {pilot.role || "General"}
-                                        </td>
-                                        <td className="py-3.5">
-                                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium bg-cyan-950/80 text-cyan-300 border border-cyan-500/40">
-                                                {pilot.status || "Activo"}
-                                            </span>
-                                        </td>
-                                        <td className="py-3.5 text-gray-500 font-mono text-[11px]">
-                                            {pilot.id}
-                                        </td>
-                                        <td className="py-3.5 text-right">
-                                            <button
-                                                onClick={() => handleDeletePilot(pilot.id)}
-                                                title="Eliminar de Firestore"
-                                                className="p-1.5 rounded-lg text-gray-500 hover:text-red-400 hover:bg-red-950/30 transition"
-                                            >
-                                                <Trash2 className="w-4 h-4" />
-                                            </button>
-                                        </td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    </div>
-                )}
-            </div>
         </div>
     );
 }
+
+
+
+

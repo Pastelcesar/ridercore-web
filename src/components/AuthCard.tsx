@@ -5,10 +5,9 @@ import { auth, googleProvider } from "@/lib/firebase";
 import {
     signInWithEmailAndPassword,
     createUserWithEmailAndPassword,
-    signInWithPopup,
-    signInAnonymously
+    signInWithPopup
 } from "firebase/auth";
-import { Shield, Lock, Mail, UserCheck, AlertCircle, ArrowRight, Zap } from "lucide-react";
+import { Shield, Lock, Mail, AlertCircle, ArrowRight } from "lucide-react";
 
 export default function AuthCard() {
     const [isRegister, setIsRegister] = useState(false);
@@ -77,37 +76,19 @@ export default function AuthCard() {
         }
     };
 
-    const handleAnonymousSignIn = async () => {
-        setErrorMsg(null);
-        setLoading(true);
-        try {
-            await signInAnonymously(auth);
-        } catch (err: unknown) {
-            console.error("Anonymous auth error:", err);
-            const error = err as { code?: string; message?: string };
-            if (error.code === "auth/operation-not-allowed") {
-                setErrorMsg("El acceso anónimo no está habilitado en Firebase Authentication.");
-            } else {
-                setErrorMsg(error.message || "Error al iniciar sesión anónima.");
-            }
-        } finally {
-            setLoading(false);
-        }
-    };
-
     return (
-        <div className="w-full max-w-md p-8 rounded-2xl bg-[#161B26]/90 border border-cyan-500/20 shadow-2xl backdrop-blur-xl transition-all duration-300">
+        <div className="w-full max-w-md p-8 rounded-2xl bg-[#121212] border border-[#A1A1AA]/20 shadow-2xl transition-all duration-300">
             {/* Header / Logo */}
             <div className="flex flex-col items-center mb-6 text-center">
-                <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-[#8A2BE2] to-[#00FFFF] p-[2px] mb-3 shadow-[0_0_20px_rgba(0,255,255,0.3)]">
-                    <div className="w-full h-full bg-[#10141E] rounded-2xl flex items-center justify-center">
-                        <Shield className="w-7 h-7 text-[#00FFFF]" />
+                <div className="w-14 h-14 rounded-2xl bg-[#FF6000] p-[2px] mb-3 shadow-[0_0_20px_rgba(255,96,0,0.3)]">
+                    <div className="w-full h-full bg-[#000000] rounded-2xl flex items-center justify-center">
+                        <Shield className="w-7 h-7 text-[#FFEA00]" />
                     </div>
                 </div>
                 <h2 className="text-2xl font-bold tracking-wider text-white">
-                    CO-PILOTO <span className="text-[#00FFFF]">ACCESS</span>
+                    CO-PILOTO <span className="text-[#FFEA00]">ACCESS</span>
                 </h2>
-                <p className="text-xs text-gray-400 mt-1 uppercase tracking-widest">
+                <p className="text-xs text-[#A1A1AA] mt-1 uppercase tracking-widest">
                     Autenticación requerida por reglas de seguridad
                 </p>
             </div>
@@ -121,7 +102,7 @@ export default function AuthCard() {
             )}
 
             {/* Tabs: Login / Register */}
-            <div className="grid grid-cols-2 gap-1 p-1 bg-[#0F131C] rounded-xl mb-6 border border-gray-800">
+            <div className="grid grid-cols-2 gap-1 p-1 bg-[#000000] rounded-xl mb-6 border border-[#A1A1AA]/20">
                 <button
                     type="button"
                     onClick={() => {
@@ -130,8 +111,8 @@ export default function AuthCard() {
                     }}
                     className={`py-2 text-xs font-semibold rounded-lg transition-all ${
                         !isRegister
-                            ? "bg-[#1F2737] text-[#00FFFF] shadow-[0_0_12px_rgba(0,255,255,0.2)]"
-                            : "text-gray-400 hover:text-white"
+                            ? "bg-[#FFEA00] text-[#000000] shadow-[0_0_12px_rgba(255,234,0,0.2)]"
+                            : "text-[#A1A1AA] hover:text-[#FFFFFF]"
                     }`}
                 >
                     Iniciar Sesión
@@ -144,8 +125,8 @@ export default function AuthCard() {
                     }}
                     className={`py-2 text-xs font-semibold rounded-lg transition-all ${
                         isRegister
-                            ? "bg-[#1F2737] text-[#8A2BE2] shadow-[0_0_12px_rgba(138,43,226,0.2)]"
-                            : "text-gray-400 hover:text-white"
+                            ? "bg-[#FFEA00] text-[#000000] shadow-[0_0_12px_rgba(255,234,0,0.2)]"
+                            : "text-[#A1A1AA] hover:text-[#FFFFFF]"
                     }`}
                 >
                     Registrarse
@@ -155,7 +136,7 @@ export default function AuthCard() {
             {/* Form */}
             <form onSubmit={handleEmailAuth} className="space-y-4">
                 <div>
-                    <label className="block text-xs font-medium text-gray-300 mb-1.5 uppercase tracking-wider">
+                    <label className="block text-xs font-medium text-[#FFFFFF] mb-1.5 uppercase tracking-wider">
                         Correo Electrónico
                     </label>
                     <div className="relative">
@@ -166,13 +147,13 @@ export default function AuthCard() {
                             value={email}
                             onChange={(e) => setEmail(e.target.value)}
                             placeholder="piloto@copiloto.space"
-                            className="w-full bg-[#0D111A] border border-gray-700/80 rounded-xl pl-10 pr-4 py-2.5 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-[#00FFFF] focus:ring-1 focus:ring-[#00FFFF] transition"
+                            className="w-full bg-[#000000] border border-[#A1A1AA]/40 rounded-xl pl-10 pr-4 py-2.5 text-sm text-[#FFFFFF] placeholder-[#A1A1AA] focus:outline-none focus:border-[#FFEA00] focus:ring-1 focus:ring-[#FFEA00] transition"
                         />
                     </div>
                 </div>
 
                 <div>
-                    <label className="block text-xs font-medium text-gray-300 mb-1.5 uppercase tracking-wider">
+                    <label className="block text-xs font-medium text-[#FFFFFF] mb-1.5 uppercase tracking-wider">
                         Contraseña
                     </label>
                     <div className="relative">
@@ -183,7 +164,7 @@ export default function AuthCard() {
                             value={password}
                             onChange={(e) => setPassword(e.target.value)}
                             placeholder="••••••••"
-                            className="w-full bg-[#0D111A] border border-gray-700/80 rounded-xl pl-10 pr-4 py-2.5 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-[#8A2BE2] focus:ring-1 focus:ring-[#8A2BE2] transition"
+                            className="w-full bg-[#000000] border border-[#A1A1AA]/40 rounded-xl pl-10 pr-4 py-2.5 text-sm text-[#FFFFFF] placeholder-[#A1A1AA] focus:outline-none focus:border-[#FF6000] focus:ring-1 focus:ring-[#FF6000] transition"
                         />
                     </div>
                 </div>
@@ -191,10 +172,10 @@ export default function AuthCard() {
                 <button
                     type="submit"
                     disabled={loading}
-                    className="w-full mt-2 py-3 px-4 rounded-xl bg-gradient-to-r from-[#00FFFF] via-cyan-400 to-[#8A2BE2] text-[#0A0D14] font-bold text-sm tracking-wider uppercase shadow-[0_0_20px_rgba(0,255,255,0.25)] hover:shadow-[0_0_28px_rgba(0,255,255,0.45)] active:scale-[0.99] disabled:opacity-50 disabled:cursor-not-allowed transition flex items-center justify-center gap-2"
+                    className="w-full mt-2 py-3 px-4 rounded-xl bg-[#FF6000] hover:bg-[#FFEA00] text-[#000000] font-bold text-sm tracking-wider uppercase shadow-[0_0_20px_rgba(255,96,0,0.25)] hover:shadow-[0_0_28px_rgba(255,96,0,0.45)] active:scale-[0.99] disabled:opacity-50 disabled:cursor-not-allowed transition flex items-center justify-center gap-2"
                 >
                     {loading ? (
-                        <div className="w-5 h-5 border-2 border-[#0A0D14] border-t-transparent rounded-full animate-spin" />
+                        <div className="w-5 h-5 border-2 border-[#000000] border-t-transparent rounded-full animate-spin" />
                     ) : (
                         <>
                             <span>{isRegister ? "Crear Credencial" : "Conectar al Panel"}</span>
@@ -222,7 +203,7 @@ export default function AuthCard() {
                     type="button"
                     onClick={handleGoogleSignIn}
                     disabled={loading}
-                    className="w-full py-2.5 px-4 rounded-xl bg-[#0D111A] border border-gray-700/70 hover:border-gray-500 text-gray-200 text-xs font-semibold transition flex items-center justify-center gap-3 disabled:opacity-50"
+                    className="w-full py-2.5 px-4 rounded-xl bg-[#000000] border border-[#A1A1AA]/40 hover:border-[#FFFFFF] text-[#FFFFFF] text-xs font-semibold transition flex items-center justify-center gap-3 disabled:opacity-50"
                 >
                     <svg className="w-4 h-4" viewBox="0 0 24 24">
                         <path
@@ -245,21 +226,8 @@ export default function AuthCard() {
                     <span>Continuar con Google</span>
                 </button>
 
-                <button
-                    type="button"
-                    onClick={handleAnonymousSignIn}
-                    disabled={loading}
-                    className="w-full py-2.5 px-4 rounded-xl bg-[#0D111A] border border-cyan-500/30 hover:border-cyan-400 text-cyan-300 text-xs font-semibold transition flex items-center justify-center gap-2 disabled:opacity-50"
-                >
-                    <Zap className="w-3.5 h-3.5 text-[#00FFFF]" />
-                    <span>Acceso Rápido de Prueba (Anónimo)</span>
-                </button>
             </div>
 
-            {/* Footer tip */}
-            <p className="text-[11px] text-gray-500 text-center mt-5">
-                Al autenticarte, Firestore validará que <code className="text-[#00FFFF]">request.auth != null</code> y te otorgará acceso a las lecturas y escrituras.
-            </p>
         </div>
     );
 }

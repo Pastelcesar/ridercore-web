@@ -33,14 +33,14 @@ export default function Home() {
     }
 
     return (
-        <main className="flex min-h-screen flex-col items-center justify-center bg-[#0D111A] text-white p-4 sm:p-8 lg:p-12 relative overflow-hidden">
+        <main className="flex min-h-screen flex-col items-center justify-center bg-[#000000] text-[#FFFFFF] p-4 sm:p-8 lg:p-12 relative overflow-hidden">
             {/* Background glowing effects */}
-            <div className="absolute -top-40 -left-40 w-96 h-96 bg-[#00FFFF]/10 rounded-full blur-3xl pointer-events-none" />
-            <div className="absolute -bottom-40 -right-40 w-96 h-96 bg-[#8A2BE2]/10 rounded-full blur-3xl pointer-events-none" />
+            <div className="absolute -top-40 -left-40 w-96 h-96 bg-[#FFEA00]/5 rounded-full blur-3xl pointer-events-none" />
+            <div className="absolute -bottom-40 -right-40 w-96 h-96 bg-[#FF6000]/5 rounded-full blur-3xl pointer-events-none" />
 
             <div className="z-10 w-full flex flex-col items-center">
                 {user ? <Dashboard user={user} /> : <AuthCard />}
             </div>
         </main>
     );
-}
+}
