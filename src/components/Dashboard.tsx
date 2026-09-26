@@ -134,6 +134,16 @@ export default function Dashboard({ user }: { user: User }) {
                 email: user.email || "",
                 updatedAt: serverTimestamp(),
             }, { merge: true });
+/// se le añadio el setProfile para limpiar los 
+// ampos despues de guardar el perfil 
+       setProfile({
+        displayName: "",
+        emergencyPhone:"",
+        bloodType: "",
+        bikeModel: "",
+       })
+
+
             alert("¡Perfil actualizado correctamente!");
         } catch (err: unknown) {
             const fireErr = err as { message?: string };
