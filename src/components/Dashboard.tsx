@@ -29,7 +29,7 @@ interface Squad {
     createdBy: string;
     members?: string[];
 }
-
+import motosBg from "@/assets/img/luaa.png";
 export default function Dashboard({ user }: { user: User }) {
     const [activeSquads, setActiveSquads] = useState<Squad[]>([]);
     const [joinCode, setJoinCode] = useState("");
@@ -226,9 +226,10 @@ const handleJoinSquad = async () => {
 
     return (
         <div className="w-full max-w-6xl mx-auto space-y-6">
-            
-            <header className="flex flex-wrap items-center justify-between gap-4 p-4 rounded-2xl bg-[#161B26]/90 border border-cyan-500/20 backdrop-blur-md shadow-xl">
-                <div className="flex items-center gap-3">
+          <header 
+    className="flex flex-wrap items-center justify-between gap-4 p-4 rounded-2xl bg-cover bg-center bg-no-repeat relative border border-cyan-500/20 shadow-xl overflow-hidden"
+    style={{ backgroundImage: `linear-gradient(rgba(22, 27, 38, 0.80), rgba(22, 27, 38, 0.80)), url(${motosBg.src || motosBg})` }}
+><div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-[#8A2BE2] to-[#00FFFF] p-[2px] shadow-[0_0_15px_rgba(0,255,255,0.3)]">
                         <div className="w-full h-full bg-[#10141E] rounded-xl flex items-center justify-center">
                             <Radio className="w-5 h-5 text-[#00FFFF] animate-pulse" />
@@ -240,18 +241,22 @@ const handleJoinSquad = async () => {
                         </h1>
                         
                        {/* se le acomodo descripcion en linea 341 */} 
-                        <p className="text-xs text-gray-400 font-mono">Telemetría de escuadrones & Monitoreo en ruta</p>
+                        <p className="text-xs text-gray-400 font-mono cursor-pointer transition-all duration-300 hover:text-transparent hover:bg-clip-text hover:bg-gradient-to-r hover:from-[#B026FF] hover:via-[#39FF14] hover:to-[#FFE600]
+                         hover:drop-shadow-[0_0_10px_rgba(0,255,255,0.8)]">
+                            Telemetría de escuadrones & Monitoreo en ruta</p>
                     </div>
                 </div>
 
                 {/* User Status & Logout */}
                 <div className="flex items-center gap-3">
                     <div className="text-right font-mono text-xs hidden sm:block">
-                        <p className="text-white font-semibold truncate max-w-[200px]">
+                       {/*mofificacion para que en el nombre de correo se vean colores al pasar el cursor */}
+                        <p className="text-white font-semibold truncate max-w-[200px] cursor-pointer transition-all duration-300 hover:text-transparent hover:bg-clip-text hover:bg-gradient-to-r hover:from-[#00FFFF] hover:via-[#39FF14] hover:to-[#FF007F]
+                         hover:drop-shadow-[0_0_10px_rgba(0,255,255,0.8)]">
                             {user.isAnonymous ? "Piloto Anónimo" : user.email || user.displayName || "Piloto Autenticado"}
                         </p>
-                        <p className="text-[#00FFFF] text-[10px] flex items-center justify-end gap-1">
-                            <span className="w-1.5 h-1.5 rounded-full bg-[#00FFFF] inline-block animate-ping" />
+                        <p className="text-[#39FF14] text-[10px] flex items-center justify-end gap-1">
+                            <span className="w-1.5 h-1.5 rounded-full bg-[#39FF14] inline-block animate-ping" />
                             Sesión Activa: Token Verificado
                         </p>
                     </div>
@@ -262,7 +267,7 @@ const handleJoinSquad = async () => {
                         title="Cerrar Sesión"
                         className="px-3 py-2 rounded-xl bg-[#0D111A] border border-gray-700 hover:border-red-500/60 hover:bg-red-950/30 text-gray-300 hover:text-red-400 text-xs font-semibold transition flex items-center gap-2"
                     >
-                        <LogOut className="w-4 h-4" />
+                        <LogOut className="w-4 h-4 text-cyan-400 transition-colors group-hover:text-red-400" />
                         <span className="hidden md:inline">Cerrar Sesión</span>
                     </button>
                 </div>
