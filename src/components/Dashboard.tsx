@@ -93,12 +93,12 @@ export default function Dashboard({ user }: { user: User }) {
                 const profileSnapshot = await getDoc(doc(db, "users", user.uid));
                 if (profileSnapshot.exists()) {
                     const data = profileSnapshot.data();
-                    setProfile({
-                        displayName: data.displayName || "",
-                        emergencyPhone: data.emergencyPhone || "",
-                        bloodType: data.bloodType || "",
-                        bikeModel: data.bikeModel || "",
-                    });
+                  //  setProfile({
+                      //  displayName: data.displayName || "",
+                      //  emergencyPhone: data.emergencyPhone || "",
+                      //  bloodType: data.bloodType || "",
+                       // bikeModel: data.bikeModel || "",
+                 //   });
                 }
             } catch (err) {
                 console.error("Error al cargar perfil:", err);
@@ -141,7 +141,7 @@ export default function Dashboard({ user }: { user: User }) {
         emergencyPhone:"",
         bloodType: "",
         bikeModel: "",
-       })
+       });
 
 
             alert("¡Perfil actualizado correctamente!");
