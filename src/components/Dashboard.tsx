@@ -1,5 +1,9 @@
 "use client";
 
+
+// Carga dinámica del mapa deshabilitando SSR
+
+import dynamic from "next/dynamic";
 import { useEffect, useState } from "react";
 import { db, auth } from "@/lib/firebase";
 import {
@@ -29,8 +33,12 @@ interface Squad {
     createdBy: string;
     members?: string[];
 }
+const Map = dynamic(() => import("./Map"), { ssr: false });
+
+
 import motosBg from "@/assets/img/luaa.png";
 export default function Dashboard({ user }: { user: User }) {
+    const [telemetryList, setTelemetryList] = useState<any[]>([]);
     const [activeSquads, setActiveSquads] = useState<Squad[]>([]);
     const [joinCode, setJoinCode] = useState("");
     const [actionLoading, setActionLoading] = useState(false);
@@ -71,6 +79,27 @@ export default function Dashboard({ user }: { user: User }) {
 
         return () => navigator.geolocation.clearWatch(watchId);
     }, [user]);
+
+useEffect(() => {
+  const q = query(collection(db, "telemetry"), limit(20));
+  const unsubTelemetry = onSnapshot(q, (snapshot) => {
+    const list: any[] = [];
+    snapshot.forEach((doc) => {
+      list.push({ id: doc.id, ...doc.data() });
+    });
+    setTelemetryList(list);
+  });
+
+  return () => unsubTelemetry();
+}, []);
+
+{/* Sección de Monitoreo en Mapa */}
+<section className="space-y-3">
+  <h2 className="text-sm font-mono uppercase tracking-wider text-[#00FFFF] flex items-center gap-2">
+    📡 Monitoreo en Tiempo Real
+  </h2>
+  <Map telemetryData={telemetryList} />
+</section>
 
     const handleStartRide = async (squadDocId: string) => {
         setActionLoading(true);
@@ -372,6 +401,8 @@ const handleJoinSquad = async () => {
                 </form>
             </section>
 
+
+
             {/* Panel de Gestión de Rodadas (Unirse o Crear) */}
             <div className="p-5 rounded-2xl bg-[#161B26] border border-gray-800 grid grid-cols-1 md:grid-cols-2 gap-4 items-center">
                 <div className="flex items-center gap-3">
@@ -425,6 +456,9 @@ const handleJoinSquad = async () => {
                                         {squad.status}
                                     </span>
                                 </div>
+
+
+                                
                                 <p className="text-[11px] text-gray-400 truncate">Por: {squad.createdBy}</p>
                                 <p className="text-[10px] text-cyan-300">
                                   Integrantes: {squad.members?.length || 1} piloto(s)
@@ -440,12 +474,25 @@ const handleJoinSquad = async () => {
                                 )}
                             </div>
                         ))}
+
                     </div>
                 </div>
             )}
+{/* MAPA  Y MONITOREO de MOTOCICLISTAS */}
+<section className="space-y-3 my-6">
+  <div className="flex items-center gap-2.5 bg-[#0D111A] p-3 rounded-xl border border-[#FFEA00]/30 shadow-[0_0_12px_rgba(255,234,0,0.15)]">
+    <span className="w-2.5 h-2.5 rounded-full bg-[#00FFFF] animate-ping" />
+    <h2 className="text-sm font-mono uppercase tracking-wider text-[] font-bold">
+      📡 MONITOREO EN TIEMPO REAL (MAPS)
+    </h2>
+  </div>
 
+  {/* Componente del Mapa */}
+  <Map telemetryData={telemetryList} />
+</section>
         </div>
     );
+
 }
 
 
