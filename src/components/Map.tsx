@@ -46,10 +46,11 @@ export default function Map({ telemetryData }: MapProps) {
         scrollWheelZoom={true}
         className="w-full h-full"
       >
-       <TileLayer
-  attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-  url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-/>
+             <TileLayer
+         attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+         className="invert-[100%] hue-rotate-180 brightness-90 contrast-90"
+       />
 
         {/* Solo renderiza marcadores que tengan coordenadas válidas */}
         {validPoints.map((point) => (
